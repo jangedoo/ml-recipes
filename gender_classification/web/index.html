@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=auto, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Gender Prediction</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+</head>
+
+<body>
+    <div style="width: 100%">
+        <h2>Online demo of gender prediction</h2>
+        <p>
+            This is the same model that we
+            <a href="http://www.sanjayasubedi.com.np/2018/04/classifying-gender-using-convolutional_3.html">trained before</a>. Check that post if you want to go through how we trained the model. I used tensorflowjs to
+            convert the saved model into web-friendly format. This demo takes the image from your webcam and uses the model
+            to make prediction. When prompted, allow this page to access your webcam and click "Predict" button.
+        </p>
+    </div>
+    <div style="margin:auto">
+        <video id="webcamvideo" autoplay></video>
+        <img id="img" src="">
+        <canvas id="canvas" style="display:none;"></canvas>
+    </div>
+    <button id="takePicture">Predict</button>
+    <p style="font-size:30px;" id="prediction"></p>
+    <script>
+        const takePictureBtn = document.getElementById("takePicture");
+        const canvas = document.getElementById("canvas");
+        const img = document.getElementById("img");
+
+        function makePredictions(model) {
+            const webcamImage = tf.fromPixels(canvas);
+            let batchedImage = webcamImage.expandDims(0);
+            batchedImage = batchedImage.toFloat().div(tf.scalar(255.0));
+            batchedImage = tf.image.resizeBilinear(batchedImage, [198, 198])
+
+            const predictions = model.predict(batchedImage).flatten().dataSync();
+            const gender_str = predictions[0] > 0.5 ? "Male" : "Female";
+            const message = `Predicted: ${gender_str}`;
+            document.getElementById("prediction").innerHTML = message;
+        }
+        async function initialize() {
+            const model = await tf.loadModel("tfjs_build/model.json");
+            let video = document.getElementById("webcamvideo");
+
+            navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+                video.srcObject = stream;
+            }).catch(error => {
+                alert("Failed to get access to the webcam.");
+                console.error(error);
+            });
+
+
+            takePictureBtn.onclick = function () {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                canvas.getContext("2d").drawImage(video, 0, 0);
+                img.src = canvas.toDataURL("image/webp");
+
+                makePredictions(model);
+            }
+        }
+
+        initialize();
+    </script>
+
+</body>
+
+</html>
